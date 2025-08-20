@@ -1,11 +1,14 @@
 #include <stdio.h>
 
-// CUDA kernel: runs on GPU
+// CUDA kernel: squares array and prints thread/block IDs
 __global__ void square(int *a, int N)
 {
-    int idx = threadIdx.x; // Each thread gets its unique index
-    if (idx < N) // Check bounds
-        a[idx] = a[idx] * a[idx]; // Square the element
+    int idx = threadIdx.x + blockIdx.x * blockDim.x; // global thread index
+    if (idx < N)
+    {
+        a[idx] = a[idx] * a[idx];
+        printf("Thread %d in Block %d processed element %d\n", threadIdx.x, blockIdx.x, idx);
+    }
 }
 
 int main()
@@ -18,19 +21,14 @@ int main()
         a[i] = i;
 
     int *d_a;
-    // Allocate memory on GPU
     cudaMalloc(&d_a, N * sizeof(int));
-
-    // Copy data from CPU (host) to GPU (device)
     cudaMemcpy(d_a, a, N * sizeof(int), cudaMemcpyHostToDevice);
 
-    // Launch kernel: 1 block, N threads
-    square<<<1, N>>>(d_a, N);
+    // Launch kernel: 2 blocks, 5 threads each (just example)
+    square<<<2, 5>>>(d_a, N);
+    cudaDeviceSynchronize(); // Ensure printf works before copying data back
 
-    // Copy results back from GPU to CPU
     cudaMemcpy(a, d_a, N * sizeof(int), cudaMemcpyDeviceToHost);
-
-    // Free GPU memory
     cudaFree(d_a);
 
     // Print results
